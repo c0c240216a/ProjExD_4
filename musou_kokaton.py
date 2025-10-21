@@ -156,6 +156,8 @@ class Beam(pg.sprite.Sprite):
         self.rect.centery = bird.rect.centery+bird.rect.height*self.vy
         self.rect.centerx = bird.rect.centerx+bird.rect.width*self.vx
         self.speed = 10
+        angle0 = 0
+        angle += angle0
 
     def update(self):
         """
