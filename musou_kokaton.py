@@ -241,6 +241,32 @@ class Score:
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+class EMP:
+    """
+    電磁パルス攻撃を表すクラス
+    発動時に敵機と爆弾を無効化し、画面に黄色いフラッシュを表示する
+    """
+    def __init__(self, emys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface):
+        # --- 敵機を無効化 ---
+        for emy in emys:
+            emy.interval = math.inf  # 爆弾を落とさない
+            # ラプラシアンフィルタで画像を変化
+            emy.image = pg.transform.laplacian(emy.image)
+
+        # --- 爆弾を無効化 ---
+        for bomb in bombs:
+            bomb.speed /= 2       # スピード半減
+            bomb.state = "inactive"  # 起爆しない印
+            bomb.image.set_alpha(128)  # 半透明にして「弱体化」演出
+
+        # --- EMPフラッシュ演出 ---
+        flash = pg.Surface((WIDTH, HEIGHT))
+        flash.fill((255, 255, 0))   # 黄色
+        flash.set_alpha(128)        # 半透明
+        screen.blit(flash, (0, 0))
+        pg.display.update()
+        time.sleep(0.05)  # 0.05秒表示
+
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -263,9 +289,16 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_SPACE:
+                    beams.add(Beam(bird))
+                if event.key == pg.K_e and score.value >= 20: 
+                    score.value -= 20  # コスト消費
+                    EMP(emys, bombs, screen)
+
         screen.blit(bg_img, [0, 0])
 
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+        if tmr%20 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
         for emy in emys:
@@ -282,12 +315,14 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
 
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-            bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-            score.update(screen)
-            pg.display.update()
-            time.sleep(2)
-            return
+        for bomb in pg.sprite.spritecollide(bird, bombs, True):
+            if getattr(bomb, "state", "") != "inactive":  # 通常爆弾のみ起爆
+                bird.change_img(8, screen)
+                score.update(screen)
+                pg.display.update()
+                time.sleep(2)
+                return
+
 
         bird.update(key_lst, screen)
         beams.update()
