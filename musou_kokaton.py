@@ -48,6 +48,7 @@ class Bird(pg.sprite.Sprite):
         pg.K_RIGHT: (+1, 0),
     }
 
+
     def __init__(self, num: int, xy: tuple[int, int]):
         """
         こうかとん画像Surfaceを生成する
@@ -72,6 +73,8 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.state = "normal"
+        self.hyper_life = 0
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -99,6 +102,12 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+
+        if self.state == "hyper":
+            self.image = pg.transform.laplacian(self.image)
+        self.hyper_life -= 1
+        if self.hyper_life < 0:
+            self.state = "normal"
         screen.blit(self.image, self.rect)
 
 
@@ -254,6 +263,7 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
 
+
     tmr = 0
     clock = pg.time.Clock()
     while True:
@@ -261,6 +271,12 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
+                if score.value >= 100 and bird.state != "hyper":
+                    score.value -= 100
+                    bird.state = "hyper"
+                    bird.hyper_life = 500
+
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
@@ -283,11 +299,15 @@ def main():
             score.value += 1  # 1点アップ
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-            bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-            score.update(screen)
-            pg.display.update()
-            time.sleep(2)
-            return
+            if bird.state == "hyper":
+                exps.add(Explosion(bomb, 50))  # 爆発だけ
+                score.value += 1
+            else:
+                bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+                score.update(screen)
+                pg.display.update()
+                time.sleep(2)
+                return
 
         bird.update(key_lst, screen)
         beams.update()
